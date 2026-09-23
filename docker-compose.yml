@@ -1,0 +1,9 @@
+services:
+  users:
+    build: ./services/users
+    ports:
+      - "8000:8000"
+  orders:
+    build: ./services/orders
+    ports:
+      - "8001:8001"
