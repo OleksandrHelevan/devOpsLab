@@ -1,72 +1,153 @@
-# Лабораторна робота №2: Continuous Integration
+# DevOps Lab: мікросервіс orders
 
-Демонстраційний мікросервісний проєкт містить два незалежні Flask-сервіси:
+Репозиторій містить Flask-сервіси `users` і `orders`. У лабораторній роботі №3
+в Kubernetes розгортається `orders` (`services/orders`), який слухає порт 8001.
 
-- `users` — `http://localhost:8000/health` та `http://localhost:8000/users`;
-- `orders` — `http://localhost:8001/health` та `http://localhost:8001/orders`.
+## Локальні перевірки та збірка
 
-## Локальний запуск
-
-Потрібні Python 3.12 та Docker Desktop.
+Потрібні Python 3.12, Docker Desktop із запущеним Docker Engine, Minikube та
+сумісний `kubectl`. У Windows встановіть інструменти через WinGet:
 
 ```powershell
-py -m pip install -r services/users/requirements-dev.txt
+winget install --id Kubernetes.minikube --exact
+winget install --id Kubernetes.kubectl --exact --version 1.37.1
+```
+
+Для Minikube v1.39.0 нижче зафіксовано Kubernetes v1.37.0; використовуйте
+`kubectl` тієї самої або сусідньої minor версії (`kubectl version --client`).
+Запускайте команди з PowerShell.
+
+```powershell
 py -m pip install -r services/orders/requirements-dev.txt
-py -m ruff check services
-py -m pytest services/users services/orders
-docker compose up --build
+py -m ruff check services/orders
+py -m pytest services/orders
+docker build --build-arg APP_VERSION=1.0.0 -t devopslab/orders:1.0.0 services/orders
+docker build --build-arg APP_VERSION=1.1.0 -t devopslab/orders:1.1.0 services/orders
 ```
 
-## Публікація на GitHub
+Обидва образи навмисно мають незмінні теги версій; `latest` не використовується.
+Для приватного registry завантажте ці два теги туди та замініть `image` у
+`k8s/30-deployment.yaml` на повне ім'я образу.
 
-1. Створіть порожній репозиторій на GitHub, наприклад `devops-lab-2`.
-2. У PowerShell з кореня цього проєкту виконайте:
+## Розгортання з нуля у Minikube
+
+Запустіть Docker Desktop, встановіть Minikube та `kubectl`, потім із PowerShell:
 
 ```powershell
-git init
-git add .
-git commit -m "Add CI pipeline for microservices"
-git branch -M main
-git remote add origin https://github.com/<ваш-логін>/devops-lab-2.git
-git push -u origin main
+minikube start --driver=docker --kubernetes-version=v1.37.0
+kubectl get nodes
+kubectl get pods -n kube-system
+minikube addons enable metrics-server
+minikube addons enable ingress
+minikube image load devopslab/orders:1.0.0
+minikube image load devopslab/orders:1.1.0
+Set-Location .\k8s
+kubectl apply -f .
+kubectl rollout status deployment/orders -n devopslab
+kubectl get pods,deployments,replicasets,services -n devopslab
 ```
 
-3. Відкрийте вкладку **Actions** і переконайтеся, що jobs `users`, `orders`,
-   `container-build` та `publish` завершилися успішно.
-4. Для перевірки PR створіть гілку, внесіть зміну та відкрийте Pull Request у
-   `main`. GitHub покаже статуси workflow безпосередньо у PR.
-
-## Branch protection
-
-У GitHub відкрийте **Settings > Rules > Rulesets** або **Settings > Branches**
-та створіть правило для `main`:
-
-- забороніть direct push і вимагайте Pull Request;
-- увімкніть **Require a pull request before merging**;
-- увімкніть **Require status checks to pass before merging**;
-- після першого запуску додайте checks `Users - lint, build, test`,
-  `Orders - lint, build, test` і `Build and scan ... image`;
-- увімкніть вимогу актуальної гілки перед злиттям.
-
-Для демонстрації заблокованого PR у тестовій гілці додайте синтаксичну помилку
-або змініть очікуваний статус у тесті. PR буде позначено як failed і кнопка
-злиття залишиться заблокованою. Після демонстрації виправте зміну.
-
-## Образи GHCR
-
-Для push у `main` workflow публікує кожен образ із двома тегами:
-
-- `ghcr.io/<owner>/<repo>/users:<commit-sha>`;
-- `ghcr.io/<owner>/<repo>/users:latest`;
-- аналогічно для `orders`.
-
-Переглянути їх можна у профілі GitHub у **Packages**. Для перевірки локально:
+Кожен об'єкт має власний YAML у `k8s/`; номери файлів забезпечують створення
+namespace, ConfigMap і Secret перед Deployment, Service та Ingress. Service
+має тип NodePort, а Ingress маршрутизує HTTP-запити до `orders`. Для доступу з
+хоста відкрийте стабільний тунель до Ingress Controller:
 
 ```powershell
-docker login ghcr.io
-docker pull ghcr.io/<owner>/<repo>/users:latest
-docker run --rm -p 8000:8000 ghcr.io/<owner>/<repo>/users:latest
+minikube service ingress-nginx-controller -n ingress-nginx --url
 ```
 
-Потім відкрийте `http://localhost:8000/health`. Для приватного пакета потрібен
-GitHub token із правом `read:packages`; токени не записуються в репозиторій.
+Команда друкує URL; відкрийте його з `/health`, `/orders`, `/config` або
+`/version` у браузері. У разі Docker driver на Windows залиште команду
+`minikube service` запущеною, поки перевіряєте URL. Тунель до Ingress
+Controller не змінюється, коли Deployment замінює application Pods під час
+rollout.
+
+### Параметри конфігурації
+
+`orders-config` (`k8s/10-configmap.yaml`) передає контейнеру:
+
+| Змінна | Значення для лабораторної | Призначення |
+| --- | --- | --- |
+| `APP_ENV` | `production` | Режим застосунку |
+| `LOG_LEVEL` | `INFO` | Рівень журналювання |
+| `ORDERS_REGION` | `eu-central` | Регіон сервісу |
+
+`orders-secret` (`k8s/20-secret.yaml`) містить `ORDERS_API_TOKEN` з явним
+демонстраційним значенням, яке не є обліковими даними. Secret Kubernetes
+кодується, але сам по собі не шифрується; не додавайте до маніфесту реальні
+паролі/ключі. У робочому середовищі передавайте значення через захищене сховище.
+`/config` повертає лише не секретні поля. Перевірити отримання змінних у
+контейнері можна так:
+
+```powershell
+kubectl exec -n devopslab deployment/orders -- printenv APP_ENV LOG_LEVEL ORDERS_REGION
+kubectl exec -n devopslab deployment/orders -- printenv ORDERS_API_TOKEN
+```
+
+Другу команду виконуйте лише для демонстраційного токена; не зберігайте її
+вивід із реальними секретами у звітах.
+
+## Керування життєвим циклом
+
+### Самовідновлення та масштабування
+
+```powershell
+kubectl get pods -n devopslab -o wide
+$pod = kubectl get pods -n devopslab -o jsonpath='{.items[0].metadata.name}'
+kubectl delete pod $pod -n devopslab
+kubectl get pods -n devopslab -w
+kubectl scale deployment/orders --replicas=4 -n devopslab
+kubectl get pods -n devopslab -o wide
+```
+
+Для перевірки розподілу запитів скопіюйте URL Ingress, отриманий через
+`minikube service`, у змінну `$url` та опитайте `/instance` кілька разів:
+
+```powershell
+$url = "http://127.0.0.1:<порт>"
+1..20 | ForEach-Object { (Invoke-RestMethod "$url/instance").instance } | Group-Object
+```
+
+### Rolling update, історія та відкат
+
+Після попереднього завантаження тегів у Minikube оновіть образ:
+
+```powershell
+kubectl set image deployment/orders orders=devopslab/orders:1.1.0 -n devopslab
+kubectl rollout status deployment/orders -n devopslab
+kubectl rollout history deployment/orders -n devopslab
+kubectl get pods -n devopslab -w
+Invoke-RestMethod "$url/version"
+kubectl rollout undo deployment/orders -n devopslab
+kubectl rollout status deployment/orders -n devopslab
+Invoke-RestMethod "$url/version"
+```
+
+Під час оновлення `maxUnavailable: 0` зберігає доступні репліки, доки нова
+репліка не стане Ready. Щоб зафіксувати доступність, запустіть повторні запити
+до `$url/health` у другому вікні PowerShell одночасно з `rollout status`.
+
+## Діагностика
+
+Навмисно задайте відсутній тег, перегляньте стан і причину, а потім відновіть
+робочу версію:
+
+```powershell
+kubectl set image deployment/orders orders=devopslab/orders:9.9.9 -n devopslab
+kubectl get pods -n devopslab -w
+kubectl describe pod <ім'я-пода> -n devopslab
+kubectl get events -n devopslab --sort-by=.lastTimestamp
+kubectl logs deployment/orders -n devopslab
+kubectl exec -it deployment/orders -n devopslab -- /bin/sh
+kubectl set image deployment/orders orders=devopslab/orders:1.0.0 -n devopslab
+kubectl rollout status deployment/orders -n devopslab
+```
+
+Значення `<ім'я-пода>` візьміть із `kubectl get pods`. Після виправлення
+переконайтеся, що обидві репліки Ready та `/health` повертає `status: ok`.
+
+## Звіт
+
+Звіт із фактичними результатами виконання та 23 місцями для скриншотів:
+[DOCX](./k8s/lab3-report.docx). Текстовий варіант команд і результатів:
+[k8s/lab3-report.md](./k8s/lab3-report.md).
