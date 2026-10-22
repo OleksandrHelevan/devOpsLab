@@ -1,0 +1,26 @@
+replicaCount: 3
+
+image:
+  tag: "1.1.0"
+
+service:
+  type: ClusterIP
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+config:
+  appEnv: production
+  logLevel: INFO
+  ordersRegion: eu-central
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ""
+  path: /
