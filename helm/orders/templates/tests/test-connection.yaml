@@ -1,0 +1,29 @@
+# Тест релізу: helm test <release> -n <namespace>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "orders.fullname" . }}-test-connection
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "orders.name" . }}-test
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: {{ .Values.tests.image }}
+      command:
+        - /bin/sh
+        - -c
+        - >-
+          set -e;
+          base=http://{{ include "orders.fullname" . }}:{{ .Values.service.port }};
+          echo "GET $base/health"; wget -qO- $base/health | grep -q ok;
+          echo "GET $base/config"; wget -qO- $base/config | grep -q {{ .Values.config.appEnv }};
+          echo "GET $base/version"; wget -qO- $base/version;
+          echo "All tests passed"
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
