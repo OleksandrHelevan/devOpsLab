@@ -1,0 +1,31 @@
+# Середовище ЛР5: minikube, керується Argo CD (gitops/argocd-apps/orders.yaml).
+# Реліз створює Argo CD: helm template orders charts/orders -f values-minikube.yaml.
+replicaCount: 2
+
+image:
+  repository: devopslab/orders
+  # Тег змінюється ТІЛЬКИ комітом у Git (п. 5 ЛР5)
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+
+config:
+  appEnv: minikube
+  logLevel: INFO
+  ordersRegion: local
+
+# Secret створено вручну (kubectl create secret ...), шаблон secret.yaml не рендериться.
+# Argo CD не видаляє його навіть із prune, бо об'єкта немає в Git.
+secret:
+  existingSecret: orders-secret
+
+# Helm-хук pre-upgrade Argo CD перетворює на PreSync і запускає перед КОЖНОЮ
+# синхронізацією, зокрема першою, коли Service ще не існує, тож хук впав би.
+# helm test в Argo CD не запускається, тому тестовий Pod теж вимкнено.
+hooks:
+  preUpgrade:
+    enabled: false
+tests:
+  enabled: false

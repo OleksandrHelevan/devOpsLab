@@ -1,0 +1,24 @@
+Реліз {{ .Release.Name }} (чарт {{ include "orders.chart" . }}, образ {{ include "orders.image" . }}) встановлено в namespace {{ .Release.Namespace }}.
+Ревізія: {{ .Release.Revision }}, реплік: {{ .Values.replicaCount }}, середовище: {{ .Values.config.appEnv }}.
+
+1. Дочекайтеся готовності подів:
+   kubectl rollout status deployment/{{ include "orders.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Відкрийте застосунок:
+{{- if .Values.ingress.enabled }}
+   Ingress увімкнено (клас {{ .Values.ingress.className }}). У Minikube:
+   minikube addons enable ingress
+   minikube service ingress-nginx-controller -n ingress-nginx --url
+{{- with .Values.ingress.host }}
+   Хост: http://{{ . }}{{ $.Values.ingress.path }}
+{{- end }}
+{{- else if eq .Values.service.type "NodePort" }}
+   minikube service {{ include "orders.fullname" . }} -n {{ .Release.Namespace }} --url
+{{- else }}
+   kubectl port-forward svc/{{ include "orders.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+   та відкрийте http://127.0.0.1:{{ .Values.service.port }}/health
+{{- end }}
+
+3. Ендпоінти: /health, /orders, /config, /version, /instance
+
+4. Перевірка релізу: helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

@@ -1,0 +1,20 @@
+# Кореневий Application (app of apps). Застосовується вручну один раз:
+#   kubectl apply -f gitops/bootstrap/root.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OleksandrHelevan/devOpsLab.git
+    targetRevision: lab5
+    path: gitops/argocd-apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

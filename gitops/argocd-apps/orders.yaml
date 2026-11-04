@@ -1,0 +1,23 @@
+# Application orders: назва Application = назва Helm-релізу (об'єкти orders, orders-config ...)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: orders
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OleksandrHelevan/devOpsLab.git
+    targetRevision: lab5
+    path: gitops/charts/orders
+    helm:
+      valueFiles:
+        - values-minikube.yaml        # шлях відносно каталогу чарту
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: orders
+  syncPolicy:
+    automated:
+      prune: true                     # selfHeal додається в п. 6a
+    syncOptions:
+      - CreateNamespace=true
