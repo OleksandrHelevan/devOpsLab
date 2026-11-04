@@ -5,7 +5,7 @@ replicaCount: 2
 image:
   repository: devopslab/orders
   # Тег змінюється ТІЛЬКИ комітом у Git (п. 5 ЛР5)
-  tag: "1.1.0"
+  tag: "9.9.9"
   pullPolicy: IfNotPresent
 
 service:
