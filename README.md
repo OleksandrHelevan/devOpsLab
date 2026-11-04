@@ -280,3 +280,58 @@ helm uninstall orders-dev -n orders-dev
 - Лабораторна №4 — інструкція з розташуванням кожного підпункту:
   [helm/lab4-guide.docx](./helm/lab4-guide.docx); звіт за пунктами 6–9 з місцями
   для скриншотів: [helm/lab4.docx](./helm/lab4.docx).
+
+# Лабораторна №5: GitOps з Argo CD
+
+Конфігурація лежить у тому самому репозиторії (гілка `lab5`), каталог [gitops](./gitops):
+
+```text
+gitops/
+├── bootstrap/root.yaml            # кореневий Application, kubectl apply один раз
+├── argocd-apps/orders.yaml        # Application orders (керується root)
+└── charts/orders/                 # чарт з ЛР4 (version 0.2.0)
+    └── values-minikube.yaml       # значення для Argo CD
+```
+
+CI (`.github/workflows/ci.yml`) має `paths-ignore` для `gitops/**`, `helm/**`,
+`*.md`, `*.docx`, `*.pdf` — зміни конфігурації не запускають збірку образів.
+
+### Розгортання
+
+```bash
+minikube start
+minikube image load devopslab/orders:1.0.0 && minikube image load devopslab/orders:1.1.0
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl -n argocd port-forward svc/argocd-server 8443:443     # 8080 зайнятий Docker
+argocd admin initial-password -n argocd
+argocd login localhost:8443 --username admin --insecure
+
+kubectl create namespace orders
+kubectl -n orders create secret generic orders-secret --from-literal=ORDERS_API_TOKEN=...
+kubectl apply -f gitops/bootstrap/root.yaml                   # єдиний ручний apply
+argocd app list
+kubectl -n orders port-forward svc/orders 8081:8001
+curl localhost:8081/version
+```
+
+Особливості `values-minikube.yaml`: `secret.existingSecret: orders-secret` (Secret
+поза Git, шаблон не рендериться); `hooks.preUpgrade.enabled: false` — Argo CD
+перетворює Helm-хук `pre-upgrade` на `PreSync`, і на першій синхронізації він
+падав би (Service ще немає); `tests.enabled: false` — `helm test` в Argo CD не
+запускається.
+
+### Зміни лише через Git
+
+| Дія | Що змінити | Коміт |
+|-----|------------|-------|
+| Новий реліз | `image.tag` у `values-minikube.yaml` | `Release orders 1.1.0` |
+| Самовідновлення | `selfHeal: true` у `argocd-apps/orders.yaml` | `Enable selfHeal for orders` |
+| Відкат | `git revert <коміт>` | `Revert "Release orders 9.9.9"` |
+
+`argocd app rollback` з увімкненою автосинхронізацією відхиляється
+(`rollback cannot be initiated when auto-sync is enabled`) — відкат робиться комітом.
+
+- Лабораторна №5 — звіт [gitops/lab5.docx](./gitops/lab5.docx), інструкція
+  [gitops/lab5-guide.docx](./gitops/lab5-guide.docx).
