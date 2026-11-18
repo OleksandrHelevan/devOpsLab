@@ -18,7 +18,6 @@ spec:
     namespace: orders
   syncPolicy:
     automated:
-      prune: true
-      selfHeal: true                  # п. 6a: повертати ручні зміни в кластері
+      prune: true                     # selfHeal додається в п. 6a
     syncOptions:
       - CreateNamespace=true

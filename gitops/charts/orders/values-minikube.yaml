@@ -1,11 +1,11 @@
 # Середовище ЛР5: minikube, керується Argo CD (gitops/argocd-apps/orders.yaml).
 # Реліз створює Argo CD: helm template orders charts/orders -f values-minikube.yaml.
-replicaCount: 3
+replicaCount: 2
 
 image:
   repository: devopslab/orders
   # Тег змінюється ТІЛЬКИ комітом у Git (п. 5 ЛР5)
-  tag: "1.1.0"
+  tag: "1.0.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -13,7 +13,7 @@ service:
 
 config:
   appEnv: minikube
-  logLevel: DEBUG
+  logLevel: INFO
   ordersRegion: local
 
 # Secret створено вручну (kubectl create secret ...), шаблон secret.yaml не рендериться.
