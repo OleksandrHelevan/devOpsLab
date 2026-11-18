@@ -333,5 +333,3 @@ curl localhost:8081/version
 `argocd app rollback` з увімкненою автосинхронізацією відхиляється
 (`rollback cannot be initiated when auto-sync is enabled`) — відкат робиться комітом.
 
-- Лабораторна №5 — звіт [gitops/lab5.docx](./gitops/lab5.docx), інструкція
-  [gitops/lab5-guide.docx](./gitops/lab5-guide.docx).
