@@ -12,12 +12,13 @@ spec:
     path: gitops/charts/orders
     helm:
       valueFiles:
-        - values-minikube.yaml        # шлях відносно каталогу чарту
+        - values-minikube.yaml   
   destination:
     server: https://kubernetes.default.svc
     namespace: orders
   syncPolicy:
     automated:
-      prune: true                     # selfHeal додається в п. 6a
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
