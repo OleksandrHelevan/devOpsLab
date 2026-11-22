@@ -33,16 +33,15 @@ metrics:
 rollout:
   enabled: true
   analysis:
-    enabled: true
+    enabled: false
     prometheusAddress: http://kps-prometheus.monitoring:9090
     selector: 'namespace="orders"'
   strategy:
     canary:
       steps:
         - setWeight: 20
-        - pause: {duration: 30s}
-        - analysis:
-            templates:
-              - templateName: orders-success-rate
+        - pause: {}
         - setWeight: 60
+        - pause: {duration: 30s}
+        - setWeight: 80
         - pause: {duration: 30s}
