@@ -7,8 +7,5 @@ rollout:
     blueGreen:
       activeService: orders
       previewService: orders-preview
-      autoPromotionEnabled: true
+      autoPromotionEnabled: false
       scaleDownDelaySeconds: 30
-      prePromotionAnalysis:
-        templates:
-          - templateName: orders-success-rate

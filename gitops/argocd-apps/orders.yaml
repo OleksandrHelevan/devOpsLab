@@ -12,6 +12,7 @@ spec:
     helm:
       valueFiles:
         - values-minikube.yaml
+        - values-minikube-bluegreen.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: orders
