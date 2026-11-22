@@ -1,3 +1,4 @@
+from services.orders import app as app_module
 from services.orders.app import app
 
 
@@ -44,3 +45,17 @@ def test_orders():
 
     assert response.status_code == 200
     assert response.json["orders"][0]["status"] == "created"
+
+def test_metrics_endpoint_counts_requests():
+    client = app_module.app.test_client()
+    client.get("/orders")
+    body = client.get("/metrics").get_data(as_text=True)
+    assert 'http_requests_total{method="GET",route="/orders",status="200"}' in body
+    assert "http_request_duration_seconds_bucket" in body
+
+
+def test_fail_rate_injects_500(monkeypatch):
+    monkeypatch.setattr(app_module, "FAIL_RATE", 1.0)
+    client = app_module.app.test_client()
+    assert client.get("/orders").status_code == 500
+    assert client.get("/health").status_code == 200

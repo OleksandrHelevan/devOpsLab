@@ -1,0 +1,14 @@
+replicaCount: 4
+rollout:
+  analysis:
+    selector: 'service="orders-preview"'
+  strategy:
+    canary: null
+    blueGreen:
+      activeService: orders
+      previewService: orders-preview
+      autoPromotionEnabled: true
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+          - templateName: orders-success-rate

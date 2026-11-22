@@ -1,0 +1,19 @@
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "orders.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orders.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      {{- include "orders.selectorLabels" . | nindent 6 }}
+  template:
+    {{- include "orders.podTemplate" . | nindent 4 }}
+  strategy:
+    {{- toYaml .Values.rollout.strategy | nindent 4 }}
+{{- end }}

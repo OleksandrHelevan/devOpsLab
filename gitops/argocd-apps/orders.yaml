@@ -1,4 +1,3 @@
-# Application orders: назва Application = назва Helm-релізу (об'єкти orders, orders-config ...)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -8,17 +7,25 @@ spec:
   project: default
   source:
     repoURL: https://github.com/OleksandrHelevan/devOpsLab.git
-    targetRevision: lab5
+    targetRevision: lab7
     path: gitops/charts/orders
     helm:
       valueFiles:
-        - values-minikube.yaml   
+        - values-minikube.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: orders
+  ignoreDifferences:
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/selector
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 5
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
     syncOptions:
       - CreateNamespace=true

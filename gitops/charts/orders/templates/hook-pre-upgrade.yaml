@@ -1,5 +1,4 @@
 {{- if .Values.hooks.preUpgrade.enabled }}
-# Хук pre-upgrade: перед оновленням перевіряє, що поточна версія релізу відповідає на /health.
 apiVersion: batch/v1
 kind: Job
 metadata:

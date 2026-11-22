@@ -1,0 +1,22 @@
+{{- if and .Values.rollout.enabled .Values.rollout.analysis.enabled }}
+{{- $sel := .Values.rollout.analysis.selector }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "orders.fullname" . }}-success-rate
+  namespace: {{ .Release.Namespace }}
+spec:
+  metrics:
+    - name: success-rate
+      interval: 30s
+      count: 4
+      failureLimit: 1
+      successCondition: result[0] >= 0.95
+      provider:
+        prometheus:
+          address: {{ .Values.rollout.analysis.prometheusAddress }}
+          query: |
+            sum(rate(http_requests_total{ {{- $sel -}},status!~"5.."}[1m]))
+            /
+            sum(rate(http_requests_total{ {{- $sel -}} }[1m]))
+{{- end }}

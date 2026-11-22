@@ -1,12 +1,10 @@
-# Значення за замовчуванням відповідають середовищу розробки (dev).
-# Пріоритет: values.yaml < -f <файл> (зліва направо) < --set / --set-string.
+
 
 replicaCount: 1
 revisionHistoryLimit: 5
 
 image:
   repository: devopslab/orders
-  # Порожній тег => використовується .Chart.AppVersion
   tag: ""
   pullPolicy: IfNotPresent
 
@@ -16,8 +14,7 @@ fullnameOverride: ""
 service:
   type: NodePort
   port: 8001
-  # Порожнє значення => Kubernetes призначить nodePort автоматично
-  # (фіксований порт заважав би встановити чарт двічі в один кластер).
+
   nodePort: ""
 
 containerPort: 8001
@@ -30,16 +27,11 @@ resources:
     cpu: 250m
     memory: 128Mi
 
-# Параметри конфігурації застосунку (потрапляють у ConfigMap)
 config:
   appEnv: development
   logLevel: DEBUG
   ordersRegion: local
 
-# Значення для Secret. Реальні паролі тут НЕ зберігаються:
-#  - apiToken порожній => токен генерується під час install і зберігається при upgrade;
-#  - або передайте його через --set secret.apiToken=... / змінну середовища CI;
-#  - або вкажіть existingSecret з уже створеним у кластері Secret.
 secret:
   apiToken: ""
   existingSecret: ""
@@ -86,7 +78,6 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 
-# Завдання 9b: хук pre-upgrade і тест релізу
 hooks:
   preUpgrade:
     enabled: true

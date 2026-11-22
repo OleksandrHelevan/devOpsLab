@@ -1,5 +1,4 @@
 {{- if .Values.tests.enabled }}
-# Тест релізу: helm test <release> -n <namespace>
 apiVersion: v1
 kind: Pod
 metadata:

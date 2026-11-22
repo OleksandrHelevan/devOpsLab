@@ -2,9 +2,7 @@ apiVersion: v2
 name: orders
 description: Helm-чарт мікросервісу orders (Flask + gunicorn) з лабораторної роботи №3
 type: application
-# Версія самого чарта (шаблонів і values). Збільшується при будь-якій зміні чарта.
-version: 0.2.0
-# Версія застосунку orders, яку чарт розгортає за замовчуванням (тег образу).
+version: 0.3.0
 appVersion: "1.0.0"
 keywords:
   - devopslab

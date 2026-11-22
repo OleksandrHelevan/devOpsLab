@@ -1,0 +1,12 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "orders.fullname" . }}-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  orders.json: |-
+{{ .Files.Get "dashboards/orders.json" | indent 4 }}
+{{- end }}

@@ -1,4 +1,3 @@
-# Середовище розробки: helm install orders-dev ./helm/orders -n orders-dev --create-namespace -f helm/orders/values-dev.yaml
 replicaCount: 1
 
 image:

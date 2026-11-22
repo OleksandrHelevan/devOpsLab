@@ -1,0 +1,21 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "orders.fullname" . }}-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orders.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: orders
+      rules:
+        - alert: OrdersHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}",status=~"5.."}[1m]))
+            / sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}"}[1m])) > 0.05
+          for: 1m
+          labels: {severity: warning}
+          annotations:
+            summary: "orders: більше 5% відповідей 5xx"
+{{- end }}

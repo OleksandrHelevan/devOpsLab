@@ -76,3 +76,73 @@ app.kubernetes.io/part-of: devopslab
 {{- define "orders.pvcName" -}}
 {{- printf "%s-data" (include "orders.fullname" .) }}
 {{- end }}
+
+{{/* Шаблон пода: спільний для Deployment і Rollout */}}
+{{- define "orders.podTemplate" -}}
+metadata:
+  labels:
+    {{- include "orders.labels" . | nindent 4 }}
+  annotations:
+    # Перезапуск подів при зміні конфігурації
+    checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+spec:
+  terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+  containers:
+    - name: {{ .Chart.Name }}
+      image: {{ include "orders.image" . | quote }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      ports:
+        - name: http
+          containerPort: {{ .Values.containerPort }}
+          protocol: TCP
+      envFrom:
+        - configMapRef:
+            name: {{ include "orders.configMapName" . }}
+      env:
+        - name: ORDERS_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "orders.secretName" . }}
+              key: ORDERS_API_TOKEN
+        {{- with .Values.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      livenessProbe:
+        httpGet:
+          path: {{ .Values.probes.path }}
+          port: http
+        initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+        periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+        timeoutSeconds: 2
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: {{ .Values.probes.path }}
+          port: http
+        initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+        periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+        timeoutSeconds: 2
+        failureThreshold: 3
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - sleep 5
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- if .Values.persistence.enabled }}
+      volumeMounts:
+        - name: data
+          mountPath: {{ .Values.persistence.mountPath }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: {{ include "orders.pvcName" . }}
+  {{- end }}
+{{- end }}

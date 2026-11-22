@@ -1,6 +1,4 @@
-# Середовище ЛР5: minikube, керується Argo CD (gitops/argocd-apps/orders.yaml).
-# Реліз створює Argo CD: helm template orders charts/orders -f values-minikube.yaml.
-replicaCount: 3
+replicaCount: 5
 
 image:
   repository: devopslab/orders
@@ -15,16 +13,36 @@ config:
   logLevel: DEBUG
   ordersRegion: local
 
-# Secret створено вручну (kubectl create secret ...), шаблон secret.yaml не рендериться.
-# Argo CD не видаляє його навіть із prune, бо об'єкта немає в Git.
 secret:
   existingSecret: orders-secret
 
-# Helm-хук pre-upgrade Argo CD перетворює на PreSync і запускає перед КОЖНОЮ
-# синхронізацією, зокрема першою, коли Service ще не існує, тож хук впав би.
-# helm test в Argo CD не запускається, тому тестовий Pod теж вимкнено.
 hooks:
   preUpgrade:
     enabled: false
 tests:
   enabled: false
+
+env:
+  - name: FAIL_RATE
+    value: "0"
+
+metrics:
+  enabled: true
+  path: /metrics
+
+rollout:
+  enabled: true
+  analysis:
+    enabled: true
+    prometheusAddress: http://kps-prometheus.monitoring:9090
+    selector: 'namespace="orders"'
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: {duration: 30s}
+        - analysis:
+            templates:
+              - templateName: orders-success-rate
+        - setWeight: 60
+        - pause: {duration: 30s}
